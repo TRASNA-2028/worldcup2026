@@ -93,13 +93,23 @@ async function trackPageVisit() {
 // ── Stage Advancement Tracking ────────────────────────────────
 
 // Track which countries have already been logged per session to avoid duplicates
-const _trackedAdvancements = new Set();
+// Use sessionStorage so it persists across re-renders but resets on new sessions
+function getTrackedSet() {
+  try {
+    return new Set(JSON.parse(sessionStorage.getItem('wc2026_tracked') || '[]'));
+  } catch(e) { return new Set(); }
+}
+function saveTrackedSet(s) {
+  sessionStorage.setItem('wc2026_tracked', JSON.stringify([...s]));
+}
 
 async function trackAdvancement(country, stage) {
-  if (!country || country === 'TBD' || country === 'Draw' || country === '') return;
+  if (!country || country === 'TBD' || country === 'Draw' || country === '' || country.includes('resolving')) return;
   const key = `${country}:${stage}`;
-  if (_trackedAdvancements.has(key)) return;
-  _trackedAdvancements.add(key);
+  const tracked = getTrackedSet();
+  if (tracked.has(key)) return;
+  tracked.add(key);
+  saveTrackedSet(tracked);
 
   await sbInsert('stage_advancements', {
     session_id: getOrCreateSessionId(),
