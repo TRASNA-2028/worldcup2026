@@ -311,7 +311,27 @@ function onGroupScoreInput(e) {
   if (!state.groups[group].scores[match]) state.groups[group].scores[match] = {};
   state.groups[group].scores[match][side] = val === '' ? '' : parseInt(val);
   saveState();
+
+  // Preserve scroll position and focused input across re-render
+  const scrollX = window.scrollX;
+  const scrollY = window.scrollY;
+  const focusKey = `${group}-${match}-${side}`;
+
   renderAll();
+
+  // Restore scroll position
+  window.scrollTo(scrollX, scrollY);
+
+  // Restore focus to the same input
+  const restored = document.querySelector(
+    `.score-input[data-group="${group}"][data-match="${match}"][data-side="${side}"]`
+  );
+  if (restored) {
+    restored.focus();
+    // Place cursor at end of value
+    const len = restored.value.length;
+    try { restored.setSelectionRange(len, len); } catch(_) {}
+  }
 }
 
 // ── Knockout Match Card ───────────────────────────────────────────────────────
@@ -564,7 +584,26 @@ function onKOScoreInput(e) {
   if (!state[round][match]) state[round][match] = { h: '', a: '', pens_h: '', pens_a: '' };
   state[round][match][side] = parsed;
   saveState();
+
+  // Preserve scroll position and focused input across re-render
+  const scrollX = window.scrollX;
+  const scrollY = window.scrollY;
+
   renderAll();
+
+  // Restore scroll position
+  window.scrollTo(scrollX, scrollY);
+
+  // Restore focus to the same input
+  const restored = document.querySelector(
+    `.knockout-score-input[data-round="${round}"][data-match="${match}"][data-side="${side}"],
+     .pens-input[data-round="${round}"][data-match="${match}"][data-side="${side}"]`
+  );
+  if (restored) {
+    restored.focus();
+    const len = restored.value.length;
+    try { restored.setSelectionRange(len, len); } catch(_) {}
+  }
 }
 
 // ── Tab Navigation ────────────────────────────────────────────────────────────
