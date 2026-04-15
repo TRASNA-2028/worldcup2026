@@ -149,7 +149,7 @@ const WC2026 = {
     },
     L: {
       teams: [
-        { name: "England",         flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" },
+        { name: "Sasana",          flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" },
         { name: "Croatia",         flag: "🇭🇷" },
         { name: "Ghana",           flag: "🇬🇭" },
         { name: "Panama",          flag: "🇵🇦" }
