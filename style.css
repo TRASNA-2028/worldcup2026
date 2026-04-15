@@ -158,6 +158,27 @@ body {
   color: var(--white);
 }
 
+.analytics-link {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 8px 14px;
+  border: 2px solid var(--gold);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gold);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  text-decoration: none;
+  margin-right: 8px;
+}
+
+.analytics-link:hover {
+  background: var(--gold);
+  color: var(--navy);
+}
+
 /* ── MAIN ────────────────────────────────────────────────────────── */
 .main-content {
   max-width: 1400px;

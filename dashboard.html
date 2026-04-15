@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analytics Dashboard — World Cup 2026 Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="analytics.js"></script>
+  <style>
+    :root {
+      --navy: #0a1628;
+      --navy2: #112240;
+      --gold: #f4c430;
+      --gold2: #e6a817;
+      --green: #2ecc71;
+      --red: #e74c3c;
+      --blue: #3498db;
+      --purple: #9b59b6;
+      --orange: #e67e22;
+      --teal: #1abc9c;
+      --text: #e8eaf0;
+      --muted: #8892a4;
+      --card: #1a2f4e;
+      --border: #243b5e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--navy);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--navy2) 0%, #0d1f3c 100%);
+      border-bottom: 2px solid var(--gold);
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    header h1 {
+      font-size: 1.6rem;
+      color: var(--gold);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    header a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      border: 1px solid var(--border);
+      padding: 6px 14px;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    header a:hover { color: var(--gold); border-color: var(--gold); }
+
+    .container { max-width: 1400px; margin: 0 auto; padding: 28px 24px; }
+
+    /* Stat cards */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+    }
+    .stat-card.gold::before { background: var(--gold); }
+    .stat-card.green::before { background: var(--green); }
+    .stat-card.blue::before { background: var(--blue); }
+    .stat-card.purple::before { background: var(--purple); }
+
+    .stat-card .icon { font-size: 2rem; margin-bottom: 8px; }
+    .stat-card .value {
+      font-size: 2.4rem;
+      font-weight: 700;
+      color: var(--gold);
+      line-height: 1;
+    }
+    .stat-card .label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Section headers */
+    .section-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--gold);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Chart grid */
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+
+    .chart-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .chart-card canvas { max-height: 260px; }
+
+    /* Stage leaderboards */
+    .stage-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+
+    .stage-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .stage-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 14px;
+    }
+    .badge-r32 { background: #1a3a5c; color: #7ec8e3; }
+    .badge-r16 { background: #1a3a2c; color: #7ed8a0; }
+    .badge-qf  { background: #3a2c1a; color: #e8c07e; }
+    .badge-sf  { background: #3a1a2c; color: #e87ec0; }
+    .badge-final { background: #2c1a3a; color: #c07ee8; }
+    .badge-champion { background: #3a2e00; color: var(--gold); }
+
+    .leaderboard-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .leaderboard-row:last-child { border-bottom: none; }
+
+    .rank {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .rank-1 { background: var(--gold); color: #000; }
+    .rank-2 { background: #aaa; color: #000; }
+    .rank-3 { background: #cd7f32; color: #fff; }
+    .rank-n { background: var(--border); color: var(--muted); }
+
+    .country-name { flex: 1; font-size: 0.9rem; }
+
+    .bar-wrap {
+      flex: 2;
+      height: 8px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--gold2), var(--gold));
+      transition: width 0.6s ease;
+    }
+
+    .count {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--gold);
+      width: 28px;
+      text-align: right;
+    }
+
+    /* Visitor table */
+    .visitor-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    .visitor-table th {
+      background: var(--navy2);
+      color: var(--muted);
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .visitor-table td {
+      padding: 9px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .visitor-table tr:hover td { background: rgba(255,255,255,0.03); }
+
+    /* Loading spinner */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 60px;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+    .spinner {
+      width: 28px; height: 28px;
+      border: 3px solid var(--border);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty { color: var(--muted); font-size: 0.85rem; text-align: center; padding: 20px; }
+
+    .refresh-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+    .refresh-btn:hover { color: var(--gold); border-color: var(--gold); }
+
+    .last-updated { font-size: 0.78rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>📊 Analytics Dashboard — 2026 World Cup Tracker</h1>
+  <div style="display:flex;gap:12px;align-items:center">
+    <span class="last-updated" id="lastUpdated">Loading...</span>
+    <button class="refresh-btn" onclick="loadDashboard()">↻ Refresh</button>
+    <a href="index.html">← Back to Tracker</a>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Stat Cards -->
+  <div class="stat-grid" id="statGrid">
+    <div class="loading"><div class="spinner"></div> Loading analytics...</div>
+  </div>
+
+  <!-- Charts Row -->
+  <div class="section-title">📈 Visitor Trends</div>
+  <div class="chart-grid" id="chartGrid">
+    <div class="chart-card"><div class="section-title" style="font-size:0.95rem">Visits Over Time</div><canvas id="chartTime"></canvas></div>
+    <div class="chart-card"><div class="section-title" style="font-size:0.95rem">Device Breakdown</div><canvas id="chartDevice"></canvas></div>
+    <div class="chart-card"><div class="section-title" style="font-size:0.95rem">Browser Breakdown</div><canvas id="chartBrowser"></canvas></div>
+    <div class="chart-card"><div class="section-title" style="font-size:0.95rem">Top Visitor Countries</div><canvas id="chartCountry"></canvas></div>
+  </div>
+
+  <!-- Stage Leaderboards -->
+  <div class="section-title">🏆 Country Advancement Leaderboards</div>
+  <p style="color:var(--muted);font-size:0.85rem;margin-bottom:20px;">
+    How often each country advances to each stage across all simulations run by your visitors.
+  </p>
+  <div class="stage-grid" id="stageGrid">
+    <div class="loading"><div class="spinner"></div></div>
+  </div>
+
+</div>
+
+<script>
+let charts = {};
+
+function destroyCharts() {
+  Object.values(charts).forEach(c => c?.destroy());
+  charts = {};
+}
+
+function mkChart(id, type, labels, data, colors, options = {}) {
+  const ctx = document.getElementById(id)?.getContext('2d');
+  if (!ctx) return;
+  charts[id] = new Chart(ctx, {
+    type,
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: colors, borderWidth: type === 'line' ? 2 : 0, fill: type === 'line', tension: 0.4, pointRadius: 3 }] },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { display: type !== 'bar' && type !== 'line', labels: { color: '#8892a4', font: { size: 11 } } },
+        tooltip: { callbacks: {} }
+      },
+      scales: (type === 'bar' || type === 'line') ? {
+        x: { ticks: { color: '#8892a4', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color: '#8892a4', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
+      } : {},
+      ...options
+    }
+  });
+}
+
+const STAGE_LABELS = {
+  r32: 'Round of 32', r16: 'Round of 16', qf: 'Quarter-Finals',
+  sf: 'Semi-Finals', final: 'Final', champion: 'Champion 🏆'
+};
+const STAGE_BADGE = {
+  r32: 'badge-r32', r16: 'badge-r16', qf: 'badge-qf',
+  sf: 'badge-sf', final: 'badge-final', champion: 'badge-champion'
+};
+
+function renderStageCard(stage, rows) {
+  const card = document.createElement('div');
+  card.className = 'stage-card';
+  const maxCount = rows[0]?.[1] || 1;
+  card.innerHTML = `
+    <div class="section-title" style="font-size:0.95rem;margin-bottom:4px">
+      ${STAGE_LABELS[stage]}
+    </div>
+    <span class="stage-badge ${STAGE_BADGE[stage]}">${stage.toUpperCase()}</span>
+    ${rows.length === 0
+      ? '<div class="empty">No data yet</div>'
+      : rows.map(([country, count], i) => `
+        <div class="leaderboard-row">
+          <div class="rank ${i < 3 ? 'rank-' + (i+1) : 'rank-n'}">${i+1}</div>
+          <div class="country-name">${country}</div>
+          <div class="bar-wrap"><div class="bar-fill" style="width:${Math.round(count/maxCount*100)}%"></div></div>
+          <div class="count">${count}</div>
+        </div>`).join('')
+    }
+  `;
+  return card;
+}
+
+const CHART_COLORS = ['#f4c430','#3498db','#2ecc71','#e74c3c','#9b59b6','#e67e22','#1abc9c','#e91e63','#00bcd4','#ff9800'];
+
+async function loadDashboard() {
+  document.getElementById('lastUpdated').textContent = 'Refreshing...';
+
+  const data = await WCAnalytics.fetchAnalyticsSummary();
+
+  // ── Stat cards ──
+  document.getElementById('statGrid').innerHTML = `
+    <div class="stat-card gold"><div class="icon">👁️</div><div class="value">${data.totalVisits.toLocaleString()}</div><div class="label">Total Visits</div></div>
+    <div class="stat-card green"><div class="icon">👤</div><div class="value">${data.uniqueSessions.toLocaleString()}</div><div class="label">Unique Sessions</div></div>
+    <div class="stat-card blue"><div class="icon">🌍</div><div class="value">${Object.keys(data.byCountry).length}</div><div class="label">Countries Reached</div></div>
+    <div class="stat-card purple"><div class="icon">🏆</div><div class="value">${(data.stageData.champion || []).length}</div><div class="label">Champions Simulated</div></div>
+  `;
+
+  // ── Charts ──
+  destroyCharts();
+
+  // Visits over time
+  const days = Object.keys(data.byDay).sort().slice(-30);
+  mkChart('chartTime', 'line', days.map(d => d.slice(5)), days.map(d => data.byDay[d]),
+    Array(days.length).fill('rgba(244,196,48,0.7)'));
+
+  // Device
+  const devLabels = Object.keys(data.byDevice);
+  mkChart('chartDevice', 'doughnut', devLabels, devLabels.map(k => data.byDevice[k]),
+    CHART_COLORS.slice(0, devLabels.length));
+
+  // Browser
+  const brLabels = Object.keys(data.byBrowser);
+  mkChart('chartBrowser', 'doughnut', brLabels, brLabels.map(k => data.byBrowser[k]),
+    CHART_COLORS.slice(0, brLabels.length));
+
+  // Top visitor countries
+  const topCountries = Object.entries(data.byCountry).sort((a,b) => b[1]-a[1]).slice(0, 8);
+  mkChart('chartCountry', 'bar',
+    topCountries.map(([c]) => c), topCountries.map(([,n]) => n),
+    topCountries.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]));
+
+  // ── Stage leaderboards ──
+  const stageGrid = document.getElementById('stageGrid');
+  stageGrid.innerHTML = '';
+  for (const stage of ['r32','r16','qf','sf','final','champion']) {
+    stageGrid.appendChild(renderStageCard(stage, data.stageData[stage] || []));
+  }
+
+  document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+}
+
+// Auto-refresh every 60 seconds
+loadDashboard();
+setInterval(loadDashboard, 60000);
+</script>
+</body>
+</html>

@@ -35,6 +35,10 @@ let state = (() => {
 
 function saveState() {
   localStorage.setItem(STATE_KEY, JSON.stringify(state));
+  // Fire analytics advancement tracking after every state save
+  if (window.WCAnalytics) {
+    window.WCAnalytics.syncAdvancements(state);
+  }
 }
 
 // ── Group Stage Logic ─────────────────────────────────────────────────────────
@@ -728,4 +732,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initTabs();
   initReset();
   renderAll();
+  // Track page visit
+  if (window.WCAnalytics) {
+    window.WCAnalytics.trackPageVisit();
+  }
 });
