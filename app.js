@@ -90,12 +90,87 @@ function getGroupTeam(groupKey, pos) {
   return standings[pos] || { name: 'TBD', flag: '' };
 }
 
+// ── Best 3rd-Place Logic (FIFA Annex C) ──────────────────────────────────────
+
+/**
+ * Rank all 12 third-placed teams by: Points → GD → GF → Alphabetical
+ * Returns array of { groupKey, ...stats } sorted best-first.
+ */
+function rankAllThirdPlace() {
+  const thirds = [];
+  Object.keys(WC2026.groups).forEach(groupKey => {
+    if (!isGroupComplete(groupKey)) return;
+    const standings = computeStandings(groupKey);
+    const t = standings[2]; // 3rd place
+    if (t) thirds.push({ groupKey, ...t });
+  });
+  thirds.sort((a, b) =>
+    b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || a.name.localeCompare(b.name)
+  );
+  return thirds;
+}
+
+/**
+ * Returns the 8 best third-placed teams (once all 12 groups are complete).
+ * Returns null if not all groups are done.
+ */
+function getBest8ThirdPlace() {
+  const allComplete = Object.keys(WC2026.groups).every(g => isGroupComplete(g));
+  if (!allComplete) return null;
+  const ranked = rankAllThirdPlace();
+  return ranked.slice(0, 8);
+}
+
+/**
+ * Given the best-8 third-placed teams, look up the Annex C table and
+ * return a map: r32MatchIndex → { name, flag } for the 3rd-place team.
+ */
+function resolveAnnexC() {
+  const best8 = getBest8ThirdPlace();
+  if (!best8) return {};
+
+  // Build the key: sorted group letters of the best 8
+  const groupLetters = best8.map(t => t.groupKey).sort().join('');
+  const slots = WC2026.annexC[groupLetters];
+  if (!slots) {
+    console.warn('Annex C key not found:', groupLetters);
+    return {};
+  }
+
+  // Build a map from groupKey → team info for all 3rd-place teams
+  const thirdTeamByGroup = {};
+  best8.forEach(t => { thirdTeamByGroup[t.groupKey] = { name: t.name, flag: t.flag }; });
+
+  // Map each Annex C column to the correct R32 match index
+  // annexCColToR32: [col0→r32idx, col1→r32idx, ...]
+  const result = {};
+  WC2026.annexCColToR32.forEach((r32Idx, colIdx) => {
+    const slotCode = slots[colIdx]; // e.g. '3E' = 3rd place from Group E
+    const grpLetter = slotCode.replace('3', ''); // 'E'
+    const team = thirdTeamByGroup[grpLetter];
+    if (team) result[r32Idx] = team;
+  });
+
+  return result;
+}
+
 // ── Knockout Logic ────────────────────────────────────────────────────────────
 function getR32Team(matchIdx, side) {
   // side: 'a' or 'b'
   const pairing = WC2026.r32Pairings[matchIdx];
   const src = side === 'a' ? pairing.a : pairing.b;
-  if (src[0] === '3rd') return { name: 'Best 3rd TBD', flag: '🔄' };
+
+  if (src[0] === '3rd') {
+    // Try to resolve via Annex C
+    const resolved = resolveAnnexC();
+    if (resolved[matchIdx]) return resolved[matchIdx];
+    // Not yet resolvable — check if all groups are complete
+    const allComplete = Object.keys(WC2026.groups).every(g => isGroupComplete(g));
+    return allComplete
+      ? { name: 'Best 3rd (resolving…)', flag: '🔄' }
+      : { name: 'TBD', flag: '' };
+  }
+
   const [grp, pos] = src;
   return getGroupTeam(grp, pos - 1);
 }
@@ -443,25 +518,32 @@ function renderR32() {
   if (note) {
     if (pendingGroups.length > 0) {
       note.style.display = 'block';
+      note.style.background = '';
+      note.style.borderColor = '';
+      note.style.color = '';
       note.innerHTML = `
         <strong>⏳ Waiting for group results:</strong>
         Groups ${pendingGroups.join(', ')} still need all 6 match scores entered.
-        Once a group is complete, its 1st and 2nd place teams will appear here automatically.
-        <br><br>
-        <strong>🔄 Matches 13–16 (Best 3rd Place):</strong>
-        After all groups are done, the 8 best 3rd-placed teams are ranked by FIFA rules
-        (Points → GD → GF). Enter their names manually in the team fields below — or wait
-        for the official FIFA announcement.
+        Once a group is complete, its 1st and 2nd place teams appear here automatically.
+        The 8 best 3rd-placed teams will also be ranked and assigned automatically once all groups are done.
       `;
     } else {
+      // All groups complete — show Annex C resolution status
+      const best8 = getBest8ThirdPlace();
+      const groupLetters = best8 ? best8.map(t => t.groupKey).sort().join('') : '';
+      const best8Names = best8 ? best8.map(t => `${t.flag} ${t.name} (Group ${t.groupKey})`).join(', ') : '';
       note.style.display = 'block';
-      note.innerHTML = `
-        ✅ All 12 groups complete! 1st and 2nd place teams have been auto-populated.
-        <br><strong>🔄 Matches 13–16:</strong> Enter the 8 best 3rd-placed teams manually in the fields below.
-      `;
       note.style.background = 'rgba(39,174,96,0.12)';
       note.style.borderColor = 'var(--green)';
       note.style.color = 'var(--green)';
+      note.innerHTML = `
+        ✅ All 12 groups complete! All 32 Round of 32 matchups have been auto-populated using FIFA's official Annex C bracket rules.
+        <br><br>
+        <strong>🏅 Best 8 Third-Place Teams (ranked by Pts → GD → GF):</strong><br>
+        ${best8Names}
+        <br><br>
+        <strong>🔑 Annex C key used:</strong> <code>${groupLetters}</code>
+      `;
     }
   }
 
