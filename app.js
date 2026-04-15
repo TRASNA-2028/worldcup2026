@@ -732,8 +732,10 @@ document.addEventListener('DOMContentLoaded', () => {
   initTabs();
   initReset();
   renderAll();
-  // Track page visit
+  // Track page visit and sync any existing state from localStorage
   if (window.WCAnalytics) {
     window.WCAnalytics.trackPageVisit();
+    // Delay slightly to ensure all scripts are ready
+    setTimeout(() => window.WCAnalytics.syncAdvancements(state), 800);
   }
 });
