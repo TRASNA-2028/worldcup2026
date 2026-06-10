@@ -2,7 +2,7 @@
  * 2026 FIFA World Cup - Complete Tournament Data
  * Groups and teams sourced from Wikipedia / official FIFA draw
  */
-const WC2026 = {
+var WC2026 = {
   groups: {
     A: {
       teams: [
